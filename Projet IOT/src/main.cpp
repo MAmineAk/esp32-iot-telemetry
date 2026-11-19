@@ -7,7 +7,7 @@
 #include "secrets.h"
 
 // Serial communication speed
-constexpr unsigned long SERIAL_BAUD_RATE = 120000;
+constexpr unsigned long SERIAL_BAUD_RATE = 115200;
 
 // Time intervals in milliseconds
 constexpr unsigned long WIFI_RECONNECT_INTERVAL_MS = 5000;

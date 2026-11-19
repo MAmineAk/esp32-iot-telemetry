@@ -1,234 +1,106 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Telemetry Dashboard</title>
-
+    <title>ESP32 Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body {
-            margin: 0;
-            padding: 32px 20px;
-            background: #f5f7fb;
-            color: #182235;
             font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
-
-        main {
-            max-width: 980px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            margin-bottom: 8px;
-        }
-
-        .subtitle {
-            color: #5b677b;
-            margin-top: 0;
-        }
-
         .cards {
             display: flex;
-            flex-wrap: wrap;
-            gap: 18px;
-            margin: 28px 0;
+            gap: 20px;
         }
-
-        .card {
-            flex: 1 1 260px;
-            padding: 22px;
+        .card, .graph {
             background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
         }
-
-        .label {
-            color: #5b677b;
-            margin: 0 0 12px;
+        .card {
+            flex: 1;
         }
-
         .value {
-            margin: 0;
             font-size: 32px;
             font-weight: bold;
         }
-
-        .note {
-            color: #657187;
+        .small {
+            color: gray;
             font-size: 13px;
-        }
-
-        .panel {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 22px;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 350px;
-        }
-
-        #status {
-            font-size: 14px;
-            color: #53637a;
         }
     </style>
 </head>
-
 <body>
-    <main>
-        <h1>IoT Telemetry Dashboard</h1>
-        <p class="subtitle">ESP32-S3 &rarr; FastAPI &rarr; SQLite</p>
-
-        <section class="cards" aria-label="Latest measurement">
-            <div class="card">
-                <p class="label">Internal chip temperature</p>
-                <p class="value">
-                    <span id="temperature">--</span> &deg;C
-                </p>
-                <p class="note">
-                    Measured by the ESP32-S3 internal sensor
-                    (not room temperature).
-                </p>
-            </div>
-
-            <div class="card">
-                <p class="label">Humidity (simulated)</p>
-                <p class="value">
-                    <span id="humidity">--</span> %
-                </p>
-                <p class="note">
-                    Placeholder value until an external humidity
-                    sensor is connected.
-                </p>
-            </div>
-        </section>
-
-        <section class="panel">
-            <h2>Last 30 measurements</h2>
-
-            <div class="chart-container">
-                <canvas id="measurementsChart"></canvas>
-            </div>
-
-            <p id="status" role="status">
-                Loading measurements...
-            </p>
-
-            <p class="note">
-                The dashboard refreshes every 10 seconds.
-                Earlier stored temperatures may be simulated.
-            </p>
-        </section>
-    </main>
-
-    <!-- Chart.js is loaded from a CDN; internet access is required. -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <h1>ESP32 Dashboard</h1>
+ 
+    <div class="cards">
+        <div class="card">
+            <div>Chip temperature</div>
+            <div class="value"><span id="temperature">--</span> °C</div>
+            <div class="small">internal sensor of the ESP32-S3, not the room</div>
+        </div>
+        <div class="card">
+            <div>Humidity</div>
+            <div class="value"><span id="humidity">--</span> %</div>
+            <div class="small">fake value until I add a real sensor</div>
+        </div>
+    </div>
+ 
+    <div class="graph">
+        <h2>Last 30 measurements</h2>
+        <canvas id="chart" height="120"></canvas>
+        <p id="status" class="small">Loading...</p>
+    </div>
+ 
     <script>
-        const statusElement = document.getElementById("status");
-        let chart = null;
-
-        if (typeof Chart === "undefined") {
-            statusElement.textContent =
-                "Chart.js could not load. Check your internet connection.";
-        } else {
-            chart = new Chart(
-                document.getElementById("measurementsChart"),
-                {
-                    type: "line",
-                    data: {
-                        labels: [],
-                        datasets: [
-                            {
-                                label: "Chip temperature (C)",
-                                data: [],
-                                borderColor: "#e05b4b",
-                                tension: 0.2
-                            },
-                            {
-                                label: "Humidity (simulated, %)",
-                                data: [],
-                                borderColor: "#357ed9",
-                                tension: 0.2
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                }
-            );
-        }
-
-        async function updateMeasurements() {
+        const chart = new Chart(document.getElementById("chart"), {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [
+                    { label: "Temperature (°C)", data: [], borderColor: "red" },
+                    { label: "Humidity (%)", data: [], borderColor: "blue" }
+                ]
+            }
+        });
+ 
+        async function refresh() {
             try {
-                const response = await fetch(
-                    "/measurements",
-                    { cache: "no-store" }
-                );
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
+                const response = await fetch("/measurements");
                 const measurements = await response.json();
-
-                if (!Array.isArray(measurements) || measurements.length === 0) {
-                    statusElement.textContent =
-                        "No measurements available yet.";
+ 
+                if (measurements.length === 0) {
+                    document.getElementById("status").textContent = "No data yet";
                     return;
                 }
-
-                // Sort by database ID so the newest measurement is last.
-                measurements.sort((a, b) => a.id - b.id);
-
-                const latest = measurements[measurements.length - 1];
-
-                document.getElementById("temperature").textContent =
-                    latest.temperature;
-
-                document.getElementById("humidity").textContent =
-                    latest.humidity;
-
-                if (chart) {
-                    const recent = measurements.slice(-30);
-
-                    chart.data.labels = recent.map(m =>
-                        new Date(m.timestamp).toLocaleTimeString("en-CA")
-                    );
-
-                    chart.data.datasets[0].data =
-                        recent.map(m => m.temperature);
-
-                    chart.data.datasets[1].data =
-                        recent.map(m => m.humidity);
-
-                    chart.update();
-                }
-
-                statusElement.textContent =
-                    `Showing ${Math.min(measurements.length, 30)} of ${measurements.length} stored measurements.`;
-
-            } catch (error) {
-                statusElement.textContent =
-                    `Unable to load measurements: ${error.message}`;
-
-                console.error("Measurement request failed:", error);
+ 
+                measurements.sort((a, b) => a.id - b.id);  // oldest first
+                const last = measurements[measurements.length - 1];
+                document.getElementById("temperature").textContent = last.temperature.toFixed(1);
+                document.getElementById("humidity").textContent = last.humidity;
+ 
+                const recent = measurements.slice(-30);
+                chart.data.labels = recent.map(m => new Date(m.timestamp).toLocaleTimeString());
+                chart.data.datasets[0].data = recent.map(m => m.temperature);
+                chart.data.datasets[1].data = recent.map(m => m.humidity);
+                chart.update();
+ 
+                document.getElementById("status").textContent = measurements.length + " measurements in the database";
+            } catch (err) {
+                document.getElementById("status").textContent = "Can't reach the server";
+                console.log(err);
             }
         }
-
-        updateMeasurements();
-        setInterval(updateMeasurements, 10000);
+ 
+        refresh();
+        setInterval(refresh, 10000);  // same rate as the ESP32
     </script>
 </body>
 </html>
+ 

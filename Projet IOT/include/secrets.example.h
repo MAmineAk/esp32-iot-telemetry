@@ -5,4 +5,4 @@
 
 #define WIFI_SSID "YOUR_WIFI_NAME"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
-#define SERVER_URL "http://192.168.0.171:8000/measurements"
+#define SERVER_URL "http://LOCAL_IP:8000/measurements"

@@ -1,36 +1,12 @@
-
-# Wi-Fi credentials and other local secrets
 **/secrets.h
-.env
-.env.*
-!.env.example
 
-# Local Python virtual environments
 .environnement_iot/
-.venv/
-venv/
 
-# Local SQLite database and temporary database files
 **/measurements.db
-**/measurements.db-*
-*.sqlite
-*.sqlite3
 
-# Python cache
 **/__pycache__/
-*.py[cod]
-.pytest_cache/
 
-# PlatformIO build output
 **/.pio/
 
-# Local editor/OS files
 .vscode/
-.idea/
 *.code-workspace
-.DS_Store
-Thumbs.db
-
-# Local diagnostic logs
-*.log
-netevents.xml
